@@ -13,6 +13,7 @@ Added
 - `pyproject.toml`, CI workflow, manifest, and release metadata for a release-ready repo
 
 Changed
+- License set to Apache-2.0 for a public integration repo with explicit patent grant
 - Moved implementation into `src/hermes_muninndb_plugin/` with thin Hermes entrypoint wrappers at the repo root
 - Improved README with installation, auth, and operational notes
 
