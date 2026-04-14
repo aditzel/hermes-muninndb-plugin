@@ -1,0 +1,6 @@
+name: muninndb
+version: 0.2.0
+description: "MuninnDB-backed Hermes memory provider using the Muninn MCP endpoint for recall and durable memory writes."
+hooks:
+  - on_session_end
+  - on_memory_write
