@@ -1,0 +1,4 @@
+hermes-muninndb-plugin
+Copyright 2026 Allan Ditzel
+
+This project ships a Hermes Agent memory-provider plugin backed by MuninnDB.

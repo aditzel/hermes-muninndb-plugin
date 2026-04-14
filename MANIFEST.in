@@ -1,5 +1,6 @@
 include README.md
 include LICENSE
+include NOTICE
 include CHANGELOG.md
 include CONTRIBUTING.md
 include plugin.yaml

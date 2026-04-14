@@ -24,6 +24,11 @@ classifiers = [
 ]
 dependencies = ["PyYAML>=6.0"]
 
+[project.urls]
+Homepage = "https://github.com/aditzel/hermes-muninndb-plugin"
+Repository = "https://github.com/aditzel/hermes-muninndb-plugin"
+Issues = "https://github.com/aditzel/hermes-muninndb-plugin/issues"
+
 [project.optional-dependencies]
 dev = [
   "build>=1.2.2",
