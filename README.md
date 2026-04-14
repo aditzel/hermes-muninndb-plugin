@@ -135,6 +135,14 @@ hermes muninndb ping
 Testing
 
 ```bash
+make test
+make smoke
+make build
+```
+
+Equivalent direct commands:
+
+```bash
 python3 -m pytest tests/test_muninndb_plugin.py -q
 python3 -m py_compile __init__.py cli.py src/hermes_muninndb_plugin/__init__.py src/hermes_muninndb_plugin/cli.py
 python3 -m build
