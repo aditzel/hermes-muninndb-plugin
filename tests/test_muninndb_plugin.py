@@ -1,4 +1,5 @@
 import importlib.util
+import importlib
 import io
 import json
 import sys
@@ -12,6 +13,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 MODULE_PATH = ROOT / "__init__.py"
+SRC_ROOT = ROOT / "src"
 
 
 @pytest.fixture
@@ -22,6 +24,14 @@ def plugin_module():
     assert spec.loader is not None
     spec.loader.exec_module(module)
     return module
+
+
+@pytest.fixture
+def installer_module():
+    if str(SRC_ROOT) not in sys.path:
+        sys.path.insert(0, str(SRC_ROOT))
+    module = importlib.import_module("hermes_muninndb_plugin.installer")
+    return importlib.reload(module)
 
 
 class FakeHTTPResponse:
@@ -311,3 +321,146 @@ def test_register_exposes_memory_provider(plugin_module):
     ctx.register_memory_provider.assert_called_once()
     registered = ctx.register_memory_provider.call_args[0][0]
     assert isinstance(registered, plugin_module.MuninnDBMemoryProvider)
+
+
+def test_materialize_install_writes_plugin_tree_and_symlink(installer_module, isolate_env):
+    result = installer_module.materialize_install(hermes_home=isolate_env)
+
+    plugin_dir = isolate_env / "plugins" / "muninndb"
+    link_path = isolate_env / "hermes-agent" / "plugins" / "memory" / "muninndb"
+
+    assert result["plugin_dir"] == str(plugin_dir)
+    assert (plugin_dir / "plugin.yaml").exists()
+    assert (plugin_dir / "__init__.py").exists()
+    assert (plugin_dir / "cli.py").exists()
+    assert (plugin_dir / "src" / "hermes_muninndb_plugin" / "__init__.py").exists()
+    assert (plugin_dir / "src" / "hermes_muninndb_plugin" / "cli.py").exists()
+    assert (plugin_dir / installer_module.MATERIALIZED_MARKER).exists()
+    assert link_path.is_symlink()
+    assert link_path.resolve() == plugin_dir.resolve()
+    plugin_yaml = (plugin_dir / "plugin.yaml").read_text()
+    assert "name: muninndb" in plugin_yaml
+    assert f"version: {installer_module.PACKAGE_VERSION}" in plugin_yaml
+
+
+def test_materialize_install_refuses_unmanaged_directory_without_force(installer_module, isolate_env):
+    plugin_dir = isolate_env / "plugins" / "muninndb"
+    plugin_dir.mkdir(parents=True)
+    (plugin_dir / "custom.txt").write_text("leave me alone")
+
+    with pytest.raises(RuntimeError):
+        installer_module.materialize_install(hermes_home=isolate_env)
+
+
+def test_materialize_install_refuses_unmarked_managed_like_directory_without_force(installer_module, isolate_env):
+    plugin_dir = isolate_env / "plugins" / "muninndb"
+    src_dir = plugin_dir / "src" / "hermes_muninndb_plugin"
+    src_dir.mkdir(parents=True)
+    (plugin_dir / "plugin.yaml").write_text("name: muninndb\n")
+    (plugin_dir / "__init__.py").write_text("# shim\n")
+    (plugin_dir / "cli.py").write_text("# shim\n")
+    (src_dir / "custom.py").write_text("print('custom')\n")
+
+    with pytest.raises(RuntimeError):
+        installer_module.materialize_install(hermes_home=isolate_env)
+
+
+def test_materialize_install_migrates_legacy_repo_clone(installer_module, isolate_env):
+    plugin_dir = isolate_env / "plugins" / "muninndb"
+    (plugin_dir / ".git").mkdir(parents=True)
+    (plugin_dir / "plugin.yaml").write_text("name: muninndb\n")
+    legacy_src = plugin_dir / "src" / "hermes_muninndb_plugin"
+    legacy_src.mkdir(parents=True)
+    (legacy_src / "__init__.py").write_text("__version__ = 'legacy'\n")
+
+    result = installer_module.materialize_install(hermes_home=isolate_env)
+
+    backup_dir = Path(result["legacy_backup"])
+    assert backup_dir.exists()
+    assert (backup_dir / ".git").exists()
+    assert (plugin_dir / installer_module.MATERIALIZED_MARKER).exists()
+
+
+def test_materialize_install_prunes_stale_files_on_refresh(installer_module, isolate_env):
+    installer_module.materialize_install(hermes_home=isolate_env)
+    stale = isolate_env / "plugins" / "muninndb" / "src" / "hermes_muninndb_plugin" / "stale.py"
+    stale.write_text("print('stale')")
+
+    installer_module.materialize_install(hermes_home=isolate_env)
+
+    assert not stale.exists()
+
+
+def test_materialize_install_activate_uses_target_hermes_home(installer_module, isolate_env, monkeypatch):
+    captured = {}
+
+    class Result:
+        returncode = 0
+        stdout = "ok"
+        stderr = ""
+
+    monkeypatch.setattr(installer_module.shutil, "which", lambda name: "/usr/bin/hermes" if name == "hermes" else None)
+
+    def fake_run(command, capture_output, text, env):
+        captured["command"] = command
+        captured["env"] = env
+        return Result()
+
+    monkeypatch.setattr(installer_module.subprocess, "run", fake_run)
+
+    result = installer_module.materialize_install(hermes_home=isolate_env, activate=True)
+
+    assert result["activated"] is True
+    assert captured["command"][-2:] == ["memory.provider", "muninndb"]
+    assert captured["env"]["HERMES_HOME"] == str(isolate_env)
+
+
+def test_materialize_install_refreshes_copy_fallback(installer_module, isolate_env, monkeypatch):
+    monkeypatch.setattr(installer_module.Path, "symlink_to", lambda self, target, target_is_directory=True: (_ for _ in ()).throw(OSError("no symlink")))
+
+    first = installer_module.materialize_install(hermes_home=isolate_env)
+    link_path = isolate_env / "hermes-agent" / "plugins" / "memory" / "muninndb"
+    stale = link_path / "stale.txt"
+    stale.write_text("old")
+
+    second = installer_module.materialize_install(hermes_home=isolate_env)
+
+    assert first["source_tree_link"]["mode"] == "copy"
+    assert second["source_tree_link"]["mode"] == "copy"
+    assert not stale.exists()
+
+
+def test_materialize_cli_supports_json_output(installer_module, isolate_env, capsys):
+    exit_code = installer_module.main([
+        "--hermes-home",
+        str(isolate_env),
+        "--no-activate",
+        "--json",
+    ])
+
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert payload["plugin_name"] == "muninndb"
+    assert payload["activated"] is False
+
+
+def test_materialize_cli_returns_nonzero_when_activation_fails(installer_module, isolate_env, monkeypatch, capsys):
+    class Result:
+        returncode = 1
+        stdout = ""
+        stderr = "boom"
+
+    monkeypatch.setattr(installer_module.shutil, "which", lambda name: "/usr/bin/hermes" if name == "hermes" else None)
+    monkeypatch.setattr(installer_module.subprocess, "run", lambda command, capture_output, text, env: Result())
+
+    exit_code = installer_module.main([
+        "--hermes-home",
+        str(isolate_env),
+        "--json",
+    ])
+
+    payload = json.loads(capsys.readouterr().out)
+    assert exit_code == 1
+    assert payload["activated"] is False

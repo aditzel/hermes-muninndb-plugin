@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented here.
 
+## [0.3.0] - 2026-04-14
+
+Added
+- `hermes-muninndb-install` / `hermes-muninndb-materialize` console scripts that materialize a self-contained Hermes plugin tree from the installed Python package
+- Automatic creation of `~/.hermes/plugins/muninndb` with Hermes entrypoint shims plus a copied `src/hermes_muninndb_plugin/` runtime payload
+- Automatic linking of `~/.hermes/hermes-agent/plugins/memory/muninndb` back to the materialized plugin tree
+
+Changed
+- README quick start now prefers PyPI install plus the materializer command instead of a repo clone
+- CI now smoke-tests the installed wheel materializer path in a fresh virtual environment
+- Publish workflow now opts into explicit PyPI attestations and README includes release badges
+
 ## [0.2.1] - 2026-04-14
 
 Added

@@ -1,5 +1,10 @@
 # MuninnDB memory provider for Hermes Agent
 
+[![CI](https://github.com/aditzel/hermes-muninndb-plugin/actions/workflows/ci.yml/badge.svg)](https://github.com/aditzel/hermes-muninndb-plugin/actions/workflows/ci.yml)
+[![PyPI version](https://img.shields.io/pypi/v/hermes-muninndb-plugin.svg)](https://pypi.org/project/hermes-muninndb-plugin/)
+[![Python versions](https://img.shields.io/pypi/pyversions/hermes-muninndb-plugin.svg)](https://pypi.org/project/hermes-muninndb-plugin/)
+[![License](https://img.shields.io/pypi/l/hermes-muninndb-plugin.svg)](LICENSE)
+
 Bottom line:
 - This is a standalone Hermes memory-provider plugin backed by MuninnDB.
 - It uses MuninnDB's MCP endpoint for recall, explicit writes, and health/status checks.
@@ -7,27 +12,33 @@ Bottom line:
 
 Quick install for Hermes users
 - PyPI project: https://pypi.org/project/hermes-muninndb-plugin/
-- Working install path today is the plugin directory layout Hermes expects, not just `site-packages`.
-- Fastest working install:
+- Fastest clean install from PyPI:
 
 ```bash
-git clone https://github.com/aditzel/hermes-muninndb-plugin.git ~/.hermes/plugins/muninndb
-git -C ~/.hermes/plugins/muninndb checkout <release-tag>  # for example: v0.2.1
-mkdir -p ~/.hermes/hermes-agent/plugins/memory
-ln -sfn ~/.hermes/plugins/muninndb ~/.hermes/hermes-agent/plugins/memory/muninndb
-hermes config set memory.provider muninndb
+pip install hermes-muninndb-plugin
+hermes-muninndb-install
 hermes memory setup
 ```
+
+- What `hermes-muninndb-install` does:
+  - materializes a self-contained plugin tree at `~/.hermes/plugins/muninndb`
+  - creates or refreshes `~/.hermes/hermes-agent/plugins/memory/muninndb`
+  - activates `memory.provider = muninndb` when the `hermes` CLI is available
+  - use `hermes-muninndb-install --no-activate` if you only want the files materialized
+
+- Why the second command exists:
+  - Python wheels do not have a clean, standard post-install hook, so the package ships an explicit materializer instead of doing something dubious behind your back.
 
 - Updating an existing install:
 
 ```bash
-git -C ~/.hermes/plugins/muninndb fetch --tags
-git -C ~/.hermes/plugins/muninndb checkout <release-tag>  # or: git -C ~/.hermes/plugins/muninndb pull --ff-only
-hermes config set memory.provider muninndb
+pip install --upgrade hermes-muninndb-plugin
+hermes-muninndb-install
 ```
 
-- `pip install hermes-muninndb-plugin` publishes the Python package successfully, but Hermes still needs the plugin files in `~/.hermes/plugins/muninndb` until external memory-provider discovery is fully landed upstream.
+- If you are upgrading from the older repo-clone layout, the installer will move that tree aside to a timestamped `muninndb-legacy-backup-*` directory before materializing the new runtime tree.
+
+- Manual repo-based install still works if you prefer to inspect or patch the plugin directly; see the Installation section below.
 
 What it does
 - Automatic recall before turns via `muninn_recall`
@@ -35,6 +46,7 @@ What it does
 - Replays pending writes after crashes or restarts
 - Mirrors built-in Hermes memory writes into MuninnDB
 - Reuses the existing Muninn MCP server config from `config.yaml` when available, including its bearer token
+- Ships a PyPI-friendly materializer command that writes the Hermes plugin directory layout for you
 - Exposes namespaced tools to the model:
   - `muninndb_recall`
   - `muninndb_remember`
@@ -50,6 +62,7 @@ Files
 - `cli.py` — Hermes CLI wrapper
 - `src/hermes_muninndb_plugin/__init__.py` — actual provider implementation
 - `src/hermes_muninndb_plugin/cli.py` — actual CLI implementation
+- `src/hermes_muninndb_plugin/installer.py` — PyPI materializer / installer entrypoint
 - `plugin.yaml` — Hermes plugin manifest
 - `pyproject.toml` — packaging and test metadata
 - `.github/workflows/ci.yml` — CI for tests/build
@@ -57,7 +70,15 @@ Files
 
 Installation
 
-1. Put the plugin where Hermes can discover it.
+1. Preferred: install from PyPI, then materialize the Hermes plugin tree.
+
+```bash
+pip install hermes-muninndb-plugin
+hermes-muninndb-install
+hermes memory setup
+```
+
+2. Manual fallback: put the plugin where Hermes can discover it.
 
 Preferred layout when your Hermes version supports user-installed memory providers:
 
@@ -72,7 +93,7 @@ If your Hermes build still only scans bundled `plugins/memory/` directories, sym
 ln -s /path/to/hermes-muninndb-plugin ~/.hermes/hermes-agent/plugins/memory/muninndb
 ```
 
-2. Configure Hermes to use the provider.
+3. Manual fallback only: configure Hermes to use the provider.
 
 ```bash
 hermes config set memory.provider muninndb
@@ -106,7 +127,7 @@ Optional secret in `$HERMES_HOME/.env`:
 MUNINN_MCP_TOKEN=your-token-here
 ```
 
-You can also avoid duplicating the token entirely if Hermes already has a Muninn MCP server configured in `config.yaml`; the plugin will reuse that `Authorization: Bearer ...` header automatically.
+You can also avoid duplicating the token entirely if Hermes already has a Muninn MCP server configured in `config.yaml`; the plugin will reuse the existing bearer Authorization header automatically.
 
 You can also override config with env vars:
 - `MUNINN_MCP_URL`
@@ -154,6 +175,7 @@ CLI
 ```bash
 hermes muninndb status
 hermes muninndb ping
+hermes-muninndb-install --json
 ```
 
 Testing

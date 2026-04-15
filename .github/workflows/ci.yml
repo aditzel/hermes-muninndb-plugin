@@ -36,3 +36,33 @@ jobs:
 
       - name: Build package
         run: python -m build
+
+      - name: Smoke-test installed wheel materializer
+        run: |
+          tmpdir=$(mktemp -d)
+          python -m venv "$tmpdir/venv"
+          "$tmpdir/venv/bin/python" -m pip install --upgrade pip
+          wheel=$(ls dist/*.whl | head -n 1)
+          "$tmpdir/venv/bin/pip" install "$wheel"
+          HERMES_HOME="$tmpdir/hermes-home" "$tmpdir/venv/bin/hermes-muninndb-install" --no-activate --json > "$tmpdir/result.json"
+          python - <<'PY' "$tmpdir"
+          import importlib.util
+          import json
+          import pathlib
+          import sys
+
+          base = pathlib.Path(sys.argv[1])
+          result = json.loads((base / 'result.json').read_text())
+          plugin_dir = pathlib.Path(result['plugin_dir'])
+          assert plugin_dir.joinpath('plugin.yaml').exists()
+          assert plugin_dir.joinpath('__init__.py').exists()
+          assert plugin_dir.joinpath('cli.py').exists()
+          assert plugin_dir.joinpath('src', 'hermes_muninndb_plugin', '__init__.py').exists()
+
+          spec = importlib.util.spec_from_file_location('materialized_plugin', plugin_dir / '__init__.py')
+          module = importlib.util.module_from_spec(spec)
+          assert spec.loader is not None
+          spec.loader.exec_module(module)
+          assert hasattr(module, 'register')
+          PY
+          rm -rf "$tmpdir"

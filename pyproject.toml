@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hermes-muninndb-plugin"
-version = "0.2.1"
+version = "0.3.0"
 description = "MuninnDB-backed memory provider plugin for Hermes Agent"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -23,6 +23,10 @@ classifiers = [
   "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = ["PyYAML>=6.0"]
+
+[project.scripts]
+hermes-muninndb-install = "hermes_muninndb_plugin.installer:main"
+hermes-muninndb-materialize = "hermes_muninndb_plugin.installer:main"
 
 [project.urls]
 Homepage = "https://github.com/aditzel/hermes-muninndb-plugin"
