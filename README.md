@@ -5,6 +5,30 @@ Bottom line:
 - It uses MuninnDB's MCP endpoint for recall, explicit writes, and health/status checks.
 - It adds deliberate memory tools plus automatic recall/capture hooks.
 
+Quick install for Hermes users
+- PyPI project: https://pypi.org/project/hermes-muninndb-plugin/
+- Working install path today is the plugin directory layout Hermes expects, not just `site-packages`.
+- Fastest working install:
+
+```bash
+git clone https://github.com/aditzel/hermes-muninndb-plugin.git ~/.hermes/plugins/muninndb
+git -C ~/.hermes/plugins/muninndb checkout <release-tag>  # for example: v0.2.1
+mkdir -p ~/.hermes/hermes-agent/plugins/memory
+ln -sfn ~/.hermes/plugins/muninndb ~/.hermes/hermes-agent/plugins/memory/muninndb
+hermes config set memory.provider muninndb
+hermes memory setup
+```
+
+- Updating an existing install:
+
+```bash
+git -C ~/.hermes/plugins/muninndb fetch --tags
+git -C ~/.hermes/plugins/muninndb checkout <release-tag>  # or: git -C ~/.hermes/plugins/muninndb pull --ff-only
+hermes config set memory.provider muninndb
+```
+
+- `pip install hermes-muninndb-plugin` publishes the Python package successfully, but Hermes still needs the plugin files in `~/.hermes/plugins/muninndb` until external memory-provider discovery is fully landed upstream.
+
 What it does
 - Automatic recall before turns via `muninn_recall`
 - Durable SQLite write-behind turn capture via `muninn_remember`

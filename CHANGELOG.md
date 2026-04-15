@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented here.
 
+## [0.2.1] - 2026-04-14
+
+Added
+- Short, exact Hermes install/update instructions near the top of the README
+
+Changed
+- Pinned GitHub Actions to immutable SHAs and upgraded to current Node 24-safe action releases
+- Pinned the PyPI publish action to an immutable release SHA
+
 ## [0.2.0] - 2026-04-14
 
 Added
