@@ -1,4 +1,7 @@
-"""Hermes plugin entrypoint wrapper for the packaged implementation."""
+"""Hermes plugin entrypoint wrapper for the packaged implementation.
+
+Provides: MuninnDBMemoryProvider (MemoryProvider)
+"""
 
 from __future__ import annotations
 
@@ -9,4 +12,4 @@ _SRC = Path(__file__).resolve().parent / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
-from hermes_muninndb_plugin import *  # noqa: F401,F403
+from hermes_muninndb_plugin import MuninnDBMemoryProvider, register  # noqa: F401

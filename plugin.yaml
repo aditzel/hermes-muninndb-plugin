@@ -1,4 +1,5 @@
 name: muninndb
+kind: exclusive
 version: 0.3.0
 description: "MuninnDB-backed Hermes memory provider using the Muninn MCP endpoint for recall and durable memory writes."
 hooks:
