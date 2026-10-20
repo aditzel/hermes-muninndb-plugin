@@ -4,49 +4,215 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+  status:
+
+permissions: {}
 
 jobs:
   build:
-    runs-on: [self-hosted, Linux, X64]
+    # Enable only after the protected release pipeline and handoff are verified.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'release' && vars.JANUS_HERMES_RELEASE_ENABLED != 'true') ||
+      (github.event_name == 'status' && vars.JANUS_HERMES_RELEASE_ENABLED == 'true' &&
+       github.event.state == 'success' &&
+       github.event.context == 'buildkite/hermes-muninndb-release-build')
+    runs-on: ${{ github.event_name == 'status' && 'ubuntu-24.04' || fromJSON('["self-hosted", "Linux", "X64"]') }}
+    timeout-minutes: ${{ github.event_name == 'status' && 15 || 360 }}
     permissions:
       contents: read
+      actions: read
+    outputs:
+      release_id: ${{ steps.prepare.outputs.release_id }}
     steps:
       - name: Check out repository
+        if: github.event_name != 'status'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Set up Python
+        if: github.event_name != 'status'
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: "3.12"
 
       - name: Build distributions
+        if: github.event_name != 'status'
         run: |
           python -m pip install --upgrade pip build
           python -m build
 
       - name: Upload distribution artifacts
+        if: github.event_name != 'status'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: python-package-distributions
           path: dist/
 
+      - name: Check out reviewed verification helpers
+        if: github.event_name == 'status'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: 81341a49be4dd1e73cc9567c0234e45d6accc4ed
+          path: .trusted-hermes
+          sparse-checkout: .ci/buildkite
+          persist-credentials: false
+
+      - name: Verify completed native distributions
+        if: github.event_name == 'status'
+        id: prepare
+        env:
+          HERMES_GITHUB_TOKEN: ${{ github.token }}
+          HERMES_BUILDKITE_TOKEN: ${{ secrets.BUILDKITE_HERMES_RELEASE_READ_TOKEN }}
+        run: |
+          umask 077
+          private_dir=$(mktemp -d "$RUNNER_TEMP/hermes-release.XXXXXX")
+          printf 'private_dir=%s\n' "$private_dir" >> "$GITHUB_OUTPUT"
+          trap 'rm -f -- "$private_dir/github-token" "$private_dir/buildkite-token"' EXIT
+          printf '%s' "$HERMES_GITHUB_TOKEN" > "$private_dir/github-token"
+          printf '%s' "$HERMES_BUILDKITE_TOKEN" > "$private_dir/buildkite-token"
+          python3 -I -B .trusted-hermes/.ci/buildkite/buildkite-publishers/hermes-release.py prepare \
+            --policy .trusted-hermes/.ci/buildkite/buildkite-publishers/hermes-policy.json \
+            --event "$GITHUB_EVENT_PATH" \
+            --github-token-file "$private_dir/github-token" \
+            --buildkite-token-file "$private_dir/buildkite-token" \
+            --output "$private_dir/prepared" > "$private_dir/report.json"
+          python3 -I -B - "$private_dir/report.json" >> "$GITHUB_OUTPUT" <<'PY'
+          import json, sys
+          report = json.load(open(sys.argv[1]))
+          print(f"handoff_name=hermes-release-handoff-{report['workflow']['runId']}-{report['producerJob']['id']}")
+          print(f"release_id={report['release']['release']['id']}")
+          PY
+
+      - name: Upload verified distribution artifacts
+        if: github.event_name == 'status'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: python-package-distributions
+          path: ${{ steps.prepare.outputs.private_dir }}/prepared/dist/
+          if-no-files-found: error
+          overwrite: true
+
+      - name: Upload producer job handoff
+        if: github.event_name == 'status'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ steps.prepare.outputs.handoff_name }}
+          path: ${{ steps.prepare.outputs.private_dir }}/prepared/handoff.json
+          if-no-files-found: error
+
+      - name: Remove private verification files
+        if: always() && steps.prepare.outputs.private_dir != ''
+        env:
+          HERMES_PRIVATE_DIR: ${{ steps.prepare.outputs.private_dir }}
+        run: |
+          case "$HERMES_PRIVATE_DIR" in
+            "$RUNNER_TEMP"/hermes-release.*) rm -rf -- "$HERMES_PRIVATE_DIR" ;;
+            *) exit 1 ;;
+          esac
+
   publish-pypi:
     needs: build
-    runs-on: [self-hosted, Linux, X64]
-    if: github.event_name == 'release'
+    runs-on: ubuntu-24.04
+    timeout-minutes: ${{ github.event_name == 'status' && 15 || 360 }}
+    if: >-
+      (github.event_name == 'release' && vars.JANUS_HERMES_RELEASE_ENABLED != 'true') ||
+      (github.event_name == 'status' && vars.JANUS_HERMES_RELEASE_ENABLED == 'true' &&
+       github.event.state == 'success' &&
+       github.event.context == 'buildkite/hermes-muninndb-release-build')
     permissions:
       id-token: write
+      contents: read
+      actions: read
+    concurrency:
+      group: hermes-pypi-${{ github.event_name == 'status' && needs.build.outputs.release_id || github.event.release.id }}
+      cancel-in-progress: false
     environment:
       name: pypi
       url: https://pypi.org/p/hermes-muninndb-plugin
     steps:
       - name: Download distribution artifacts
+        if: github.event_name == 'release'
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: python-package-distributions
           path: dist/
 
+      - name: Check out reviewed verification helpers
+        if: github.event_name == 'status'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: 81341a49be4dd1e73cc9567c0234e45d6accc4ed
+          path: .trusted-hermes
+          sparse-checkout: .ci/buildkite
+          persist-credentials: false
+
+      - name: Select the successful producer job handoff
+        if: github.event_name == 'status'
+        id: select
+        env:
+          HERMES_GITHUB_TOKEN: ${{ github.token }}
+          HERMES_BUILDKITE_TOKEN: ${{ secrets.BUILDKITE_HERMES_RELEASE_READ_TOKEN }}
+        run: |
+          umask 077
+          private_dir=$(mktemp -d "$GITHUB_WORKSPACE/.hermes-release.XXXXXX")
+          mkdir "$private_dir/handoff"
+          printf 'private_dir=%s\n' "$private_dir" >> "$GITHUB_OUTPUT"
+          printf 'package_dir=%s/publisher/dist/\n' "${private_dir##*/}" >> "$GITHUB_OUTPUT"
+          trap 'rm -f -- "$private_dir/github-token" "$private_dir/buildkite-token"' EXIT
+          printf '%s' "$HERMES_GITHUB_TOKEN" > "$private_dir/github-token"
+          printf '%s' "$HERMES_BUILDKITE_TOKEN" > "$private_dir/buildkite-token"
+          python3 -I -B .trusted-hermes/.ci/buildkite/buildkite-publishers/hermes-release.py select \
+            --policy .trusted-hermes/.ci/buildkite/buildkite-publishers/hermes-policy.json \
+            --event "$GITHUB_EVENT_PATH" \
+            --github-token-file "$private_dir/github-token" \
+            --buildkite-token-file "$private_dir/buildkite-token" > "$private_dir/selection.json"
+          python3 -I -B - "$private_dir/selection.json" >> "$GITHUB_OUTPUT" <<'PY'
+          import json, sys
+          print(f"artifact_id={json.load(open(sys.argv[1]))['artifactId']}")
+          PY
+
+      - name: Download the selected handoff
+        if: github.event_name == 'status'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ steps.select.outputs.artifact_id }}
+          path: ${{ steps.select.outputs.private_dir }}/handoff
+          merge-multiple: true
+
+      - name: Reverify the exact distribution bytes
+        if: github.event_name == 'status'
+        env:
+          HERMES_PRIVATE_DIR: ${{ steps.select.outputs.private_dir }}
+          HERMES_GITHUB_TOKEN: ${{ github.token }}
+          HERMES_BUILDKITE_TOKEN: ${{ secrets.BUILDKITE_HERMES_RELEASE_READ_TOKEN }}
+        run: |
+          umask 077
+          private_dir="$HERMES_PRIVATE_DIR"
+          trap 'rm -f -- "$private_dir/github-token" "$private_dir/buildkite-token"' EXIT
+          printf '%s' "$HERMES_GITHUB_TOKEN" > "$private_dir/github-token"
+          printf '%s' "$HERMES_BUILDKITE_TOKEN" > "$private_dir/buildkite-token"
+          python3 -I -B .trusted-hermes/.ci/buildkite/buildkite-publishers/hermes-release.py verify \
+            --policy .trusted-hermes/.ci/buildkite/buildkite-publishers/hermes-policy.json \
+            --event "$GITHUB_EVENT_PATH" \
+            --github-token-file "$private_dir/github-token" \
+            --buildkite-token-file "$private_dir/buildkite-token" \
+            --handoff "$private_dir/handoff/handoff.json" \
+            --output "$private_dir/publisher" > "$private_dir/publisher-proof.json"
+
       - name: Publish to PyPI via trusted publishing
         uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
         with:
           attestations: true
+          packages-dir: ${{ github.event_name == 'status' && steps.select.outputs.package_dir || 'dist/' }}
+
+      - name: Remove private publishing files
+        if: always() && steps.select.outputs.private_dir != ''
+        env:
+          HERMES_PRIVATE_DIR: ${{ steps.select.outputs.private_dir }}
+        run: |
+          case "$HERMES_PRIVATE_DIR" in
+            "$GITHUB_WORKSPACE"/.hermes-release.*) rm -rf -- "$HERMES_PRIVATE_DIR" ;;
+            *) exit 1 ;;
+          esac
