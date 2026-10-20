@@ -2,5 +2,5 @@
   "schemaVersion": 1,
   "repository": "aditzel/hermes-muninndb-plugin",
   "pipeline": "hermes-muninndb-release-build",
-  "producerPolicySha256": "ce1376bd53629f261bc8a797412d4e12c0b4982de414722e78b8a188966874ae"
+  "producerPolicySha256": "88bf78ab3db1daf53d6cc77467a3046f4b7d8487c4e712216a8f049eae231bf3"
 }

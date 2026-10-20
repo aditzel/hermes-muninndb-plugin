@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "sourceRepository": "MiraiForge/devops",
-  "sourceCommit": "a0630b2a3f8a2b57a34916da04766fa965d2039a",
+  "sourceCommit": "f0a8a66149da26af43918f8d88f4cad3e352a91c",
   "purpose": "Read-only verification and transfer of completed Hermes release distributions",
   "files": {
     "buildkite-publishers/hermes.py": {
@@ -14,7 +14,7 @@
     },
     "buildkite-publishers/hermes-policy.json": {
       "sourcePath": "infrastructure/buildkite-publishers/hermes-policy.example.json",
-      "sha256": "6e48c5c349b721958bd5efd620ae8a5b4735c2acd1275f27d08a466644dd9870"
+      "sha256": "5b223647ddb7b7e2836624fa6702b2fbf2f63e6af47409a41505100268b57f3c"
     },
     "buildkite-janus/hermes_actions.py": {
       "sourcePath": "infrastructure/buildkite-janus/hermes_actions.py",
