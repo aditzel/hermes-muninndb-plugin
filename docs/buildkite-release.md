@@ -45,7 +45,7 @@ build and artifact records. The job's GitHub token has `contents: read` and
 No checkout token is persisted and no package code is installed by a verifier.
 
 The helper bundle is checked out at immutable Hermes commit
-`380cf85ff1f20e8dc4f78af35716691680c68383`, independently of the event's release
+`1365deefbcc512803cf3d2aabb5312879e2779c2`, independently of the event's release
 commit and default-branch workflow commit. Keep that commit reachable when
 merging: use a merge that preserves it, rather than squashing or rebasing it
 away. See [the bundle provenance](../.ci/buildkite/provenance.json) and
