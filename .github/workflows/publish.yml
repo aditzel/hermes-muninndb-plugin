@@ -54,7 +54,7 @@ jobs:
         if: github.event_name == 'status'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          ref: 81341a49be4dd1e73cc9567c0234e45d6accc4ed
+          ref: 380cf85ff1f20e8dc4f78af35716691680c68383
           path: .trusted-hermes
           sparse-checkout: .ci/buildkite
           persist-credentials: false
@@ -143,7 +143,7 @@ jobs:
         if: github.event_name == 'status'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          ref: 81341a49be4dd1e73cc9567c0234e45d6accc4ed
+          ref: 380cf85ff1f20e8dc4f78af35716691680c68383
           path: .trusted-hermes
           sparse-checkout: .ci/buildkite
           persist-credentials: false
