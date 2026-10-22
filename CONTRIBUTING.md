@@ -48,3 +48,13 @@ Use conventional commits where possible:
 - `fix:` bug fix
 - `docs:` documentation only
 - `chore:` repo maintenance
+
+Pull request titles use the same conventional format, for example
+`fix: handle empty recall results`.
+
+When a coding agent contributes to a commit, add that agent's `Co-authored-by`
+trailer to the commit message. For Factory Droid, use:
+
+```text
+Co-authored-by: factory-droid[bot] <138933559+factory-droid[bot]@users.noreply.github.com>
+```
