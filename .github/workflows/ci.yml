@@ -9,11 +9,17 @@ on:
 permissions:
   contents: read
 
+# Pull requests cancel superseded runs of the same PR; main pushes and manual runs never cancel.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 # Keep automatic checks until the protected Janus pipelines are commissioned.
 # Review fork workflow changes before approving: routing is not a runner access boundary.
 jobs:
   test:
     runs-on: ubuntu-24.04
+    timeout-minutes: 360
     strategy:
       fail-fast: false
       matrix:
