@@ -15,6 +15,9 @@ import time
 
 
 ROOT = Path(__file__).resolve().parents[2]
+if sys.argv[1:] == ["3.11"]:
+    os.execv(sys.executable, [sys.executable, "-I", "-B",
+                            str(ROOT / "scripts/buildkite/reader-loss-probe.py")])
 MATERIALIZER_SMOKE = """
 import importlib.util
 import json
