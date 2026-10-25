@@ -1,13 +1,16 @@
-# Protected Janus Python CI preparation
+# Protected Janus Python CI
 
-This is additive ordinary CI preparation. Automatic main-push, all pull-request
-and manual Actions checks use read-only hosted Ubuntu 24.04 workers while native
-commissioning proceeds; checkout never persists credentials. Both Python lanes
-retain `fail-fast: false`, so one failure does not cancel the other lane. Hosted
-routing keeps automatic coverage working until a separate reviewed Janus cutover.
+Main pushes and same-repository pull requests against any base branch run on
+Buildkite's `hermes-muninndb-shadow-ci` pipeline on Janus. The existing slug is
+retained so status contexts stay stable. Fork PRs and manual recovery runs keep
+read-only hosted Ubuntu 24.04 workers; checkout never persists credentials.
+Both Python lanes run independently. Hosted recovery retains `fail-fast: false`.
+See [CI operations and rollback](ci-operations.md) for triggers, status checks,
+commissioning gates and recovery commands. The separate Buildkite manual-CI
+route still needs commissioning; this change moves ordinary push/PR execution.
 
-The pipeline reference calls `janus-ci bootstrap`; configure and verify the
-image-owned `hermes-muninndb-shadow-ci` policy before native use. No repository
+The pipeline reference calls `janus-ci bootstrap` using the deployed
+image-owned `hermes-muninndb-shadow-ci` policy. No repository
 pipeline file grants admission. Each independent lane preserves the original
 360-minute Actions bound and has an empty environment allowlist and artifact list:
 
@@ -20,7 +23,8 @@ The shared image supplies checksum-pinned Python, venv/ensurepip and TLS support
 Jobs run without credentials as UID 10001 in fresh restricted containers. The
 native admission, trusted source/merge validation and statuses are tracked by
 commissioning evidence for each exact source and image. A successful native run
-verifies only that recorded revision; automatic Actions remains until cutover.
+verifies only that recorded revision. The 360-minute provider limit bounds the
+whole job, including setup and cleanup; it is not 360 minutes plus overhead.
 
 Each lane creates private check and wheel virtualenvs. It preserves the original
 pip upgrade, editable development install, pytest, wrapper compilation, package
@@ -42,12 +46,13 @@ process sessions and hard termination; wrapper tests do not prove provider clean
 
 `.github/workflows/publish.yml` is unchanged. Its Python 3.12 distribution build,
 original wheel/sdist artifact, release-only PyPI job, protected `pypi` environment,
-OIDC identity and attestations remain authoritative. This ordinary CI preparation
+OIDC identity and attestations remain authoritative. This ordinary CI cutover
 neither publishes artifacts nor replaces release/manual input or publishing
-handoffs. Earlier local release preparation is parked separately and unpublished.
+handoffs. Release preparation remains in separate, unmerged pull requests.
 
 Dependencies retain their existing unpinned pip upgrades and project constraints;
-no reproducible dependency-resolution claim is made. Before cutover, verify both
+no reproducible dependency-resolution claim is made. Before merging the cutover, verify both
 native PR/main lanes, exact source and base identity, failure/cancellation/status
 behavior, hosted fork isolation, required statuses and a successful hosted manual
-fallback. Automatic Actions must remain until those gates pass.
+fallback. Keep the cutover PR unmerged until those gates pass, then verify the
+main-push webhook at the merge commit.
