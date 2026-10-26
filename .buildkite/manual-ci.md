@@ -53,14 +53,24 @@ passed both lanes at the same reviewed `500da82` source used by build 12 and
 uploaded two controller indexes, each with an empty payload list and the exact
 successful job/source identity. This exercises HTTP 401, not network/5xx outages.
 
-Retiring hosted manual recovery requires recorded live acceptance of every gate:
+On 2026-10-26 UTC, activation rollback was exercised by archiving both manual
+pipelines and the later MCP pilot, draining the queue, and restoring the saved
+14-profile image (`9f6a51aea9e1`) and Compose configuration. The manual profiles
+were absent; [ordinary build 21](https://buildkite.com/mirai-forge/hermes-muninndb-shadow-ci/builds/21)
+passed both Python lanes. After restoring the normal 17-profile image
+(`ab632d6ba332`) and its original secret mounts, all three pipelines were
+unarchived and the queue resumed. [Manual build 16](https://buildkite.com/mirai-forge/hermes-muninndb-manual-ci/builds/16)
+passed at `500da82d8b65cbd7bf2fed6d7df32d2752b533a1`; both controller indexes
+were checked against provider hashes and exact source/job identities. Cleanup
+left no job processes, checkout or controller state, and eight unrelated
+containers were unchanged. This proves activation rollback for these saved
+configurations; it does not complete the remaining acceptance below.
+
+Retiring hosted manual recovery requires recorded live acceptance of every remaining gate:
 
 - API-origin creation and the remaining manual admission/refusal cases.
 - Network/5xx failures, command-timeout and remaining-budget handling, queue
   interference, cancellation cleanup and retry behavior.
-- Rollback of the manual activation to the prior image, manifest and provider
-  configuration, followed by successful recovery. An unrelated pipeline's
-  rollback that retains this manual profile does not establish this gate.
 - Ordinary trusted-PR admission, fork exclusion on Janus with hosted fork
   execution, exact-commit GitHub status reporting and a real `main` push build,
   as required by the linked ordinary operations guide.
