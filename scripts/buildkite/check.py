@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run a credential-free shadow CI lane without touching the user's Hermes home."""
+"""Run a credential-free Janus CI lane without touching the user's Hermes home."""
 
 from __future__ import annotations
 
@@ -176,7 +176,7 @@ def main(argv: list[str] | None = None) -> int:
     if not runtime_matches(args.lane):
         print(f"Expected stable Python {args.lane}; got {sys.version.split()[0]}", file=sys.stderr)
         return 1
-    print(f"PREPARATION: Python {sys.version.split()[0]}; Actions remains authoritative.", flush=True)
+    print(f"Janus CI: Python {sys.version.split()[0]}; isolated wheel verification.", flush=True)
     global _cancel_signal
     _cancel_signal = None
     handled = (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)
