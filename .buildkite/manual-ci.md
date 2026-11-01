@@ -2,7 +2,7 @@
 
 The separate [Hermes manual CI pipeline](https://buildkite.com/mirai-forge/hermes-muninndb-manual-ci)
 is active on Janus for commissioning. Ordinary push/PR CI remains on
-`hermes-muninndb-shadow-ci`; its [reviewed operations and rollback guide](https://github.com/aditzel/hermes-muninndb-plugin/blob/500da82d8b65cbd7bf2fed6d7df32d2752b533a1/.buildkite/ci-operations.md)
+`hermes-muninndb-shadow-ci`; its [reviewed operations and rollback guide](ci-operations.md)
 still applies. Keep the GitHub-hosted manual recovery control until the remaining
 manual acceptance gates are complete.
 
