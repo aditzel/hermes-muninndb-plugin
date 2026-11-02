@@ -198,7 +198,7 @@ class API:
         location = self.api('buildkite', path, redirect=True)
         target = urllib.parse.urlsplit(location)
         require(target.scheme == 'https' and target.netloc == 'buildkiteartifacts.com'
-                and target.path.startswith('/artifacts/') and not target.fragment
+                and target.path.startswith(('/artifacts/', '/v2/')) and not target.fragment
                 and all(32 < ord(c) < 127 for c in location), 'Artifact redirect outside approved storage')
         # New request, no API Authorization header, no proxy or redirect follow.
         return self.request(location, {'Accept': 'application/octet-stream'}, size)
