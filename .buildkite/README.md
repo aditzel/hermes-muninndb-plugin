@@ -11,8 +11,8 @@ route still needs commissioning; this change moves ordinary push/PR execution.
 
 The pipeline reference calls `janus-ci bootstrap` using the deployed
 image-owned `hermes-muninndb-shadow-ci` policy. No repository
-pipeline file grants admission. Each independent lane preserves the original
-360-minute Actions bound and has an empty environment allowlist and artifact list:
+pipeline file grants admission. Each independent lane has a 15-minute provider limit
+and an empty environment allowlist and artifact list:
 
 | Job | Protected interpreter | Command |
 | --- | --- | --- |
@@ -23,8 +23,8 @@ The shared image supplies checksum-pinned Python, venv/ensurepip and TLS support
 Jobs run without credentials as UID 10001 in fresh restricted containers. The
 native admission, trusted source/merge validation and statuses are tracked by
 commissioning evidence for each exact source and image. A successful native run
-verifies only that recorded revision. The 360-minute provider limit bounds the
-whole job, including setup and cleanup; it is not 360 minutes plus overhead.
+verifies only that recorded revision. The 15-minute provider limit bounds the
+whole job, including setup and cleanup; it does not add time for overhead.
 
 Each lane creates private check and wheel virtualenvs. It preserves the original
 pip upgrade, editable development install, pytest, wrapper compilation, package

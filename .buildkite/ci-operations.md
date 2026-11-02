@@ -21,7 +21,8 @@ The pipeline's repository must be `aditzel/hermes-muninndb-plugin`, with protect
 - Push builds enabled with branch pattern `main`; tags and third-party forks off.
 - PR opened/updated/reopened builds enabled without a PR base-branch restriction.
 - Existing-commit skipping and intermediate-build skipping/cancellation off.
-- Default and maximum command timeouts at 360 minutes; both generated lanes at 360.
+- Both generated ordinary lanes have a 15-minute provider limit, including setup
+  and cleanup. Provider default/maximum settings must permit those explicit limits.
 - Commit status reporting and separate PR statuses enabled.
 
 The expected PR context is `buildkite/hermes-muninndb-shadow-ci/pr`; branch builds
